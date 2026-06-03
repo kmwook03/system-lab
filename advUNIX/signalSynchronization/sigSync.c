@@ -58,10 +58,6 @@ void WAIT_PARENT() {
         sigsuspend(&zeromask); // 신호가 올 때까지 대기
     }
     sigflag = 0; // 신호 처리 후 플래그 초기화
-    if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0) {
-        perror("SIG_SETMASK error");
-        exit(1);
-    }
 }
 
 void TELL_CHILD(pid_t pid) {
@@ -73,10 +69,6 @@ void WAIT_CHILD() {
         sigsuspend(&zeromask); // 신호가 올 때까지 대기
     }
     sigflag = 0; // 신호 처리 후 플래그 초기화
-    if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0) {
-        perror("SIG_SETMASK error");
-        exit(1);
-    }
 }
 
 int main() {
@@ -88,18 +80,27 @@ int main() {
     if ((pid = fork()) < 0) {
         perror("fork error");
         exit(1);
-    } else if (pid > 0) { // Parent process
+    } else if (pid > 0) { // 부모 프로세스
         for (int i = 0; i < 10; i++) {
             charattime("Output from parent\n");
             TELL_CHILD(pid); // 자식 프로세스에게 신호 전송
             WAIT_CHILD(); // 자식 프로세스의 신호 대기
         }
+        if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0) {
+            perror("SIG_SETMASK error");
+            exit(1);
+        }
+        waitpid(pid, NULL, 0); // 자식 프로세스 종료 대기
         exit(0);
-    } else { // Child process
+    } else { // 자식 프로세스
         for (int i = 0; i < 10; i++) {
             WAIT_PARENT(); // 부모 프로세스의 신호 대기
             charattime("Output from child\n");
             TELL_PARENT(getppid()); // 부모 프로세스에게 신호 전송
+        }
+        if (sigprocmask(SIG_SETMASK, &oldmask, NULL) < 0) {
+            perror("SIG_SETMASK error");
+            exit(1);
         }
         exit(0);
     }
